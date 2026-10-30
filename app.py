@@ -34,8 +34,46 @@ if tipo_ingreso == "Neto (lo que te llega al banco)":
         step=50.0,
         format="%.2f",
     )
+    
+    # Pregunta sobre pagas extras para sueldo neto
+    st.markdown("---")
+    tiene_pagas_extras = st.radio(
+        "¿Cobras pagas extras (aparte de las 12 mensualidades ordinarias)?",
+        options=["No", "Sí"],
+        horizontal=True,
+        key="pagas_neto"
+    )
+    
+    if tiene_pagas_extras == "Sí":
+        col_pe1, col_pe2 = st.columns(2)
+        with col_pe1:
+            num_pagas_extra = st.selectbox(
+                "Número de pagas extras al año:",
+                options=[1, 2, 3, 4],
+                index=1,
+                key="num_pe_neto"
+            )
+        with col_pe2:
+            importe_paga_extra = st.number_input(
+                "Importe neto de cada paga extra (€):",
+                min_value=0.0,
+                value=2000.0,
+                step=50.0,
+                format="%.2f",
+                key="imp_pe_neto"
+            )
+        
+        # Prorrateo anual de las pagas extras entre los 12 meses
+        extra_anual = num_pagas_extra * importe_paga_extra
+        ingreso_neto_mensual += extra_anual / 12
+        
+        st.caption(
+            f"💡 Incluyendo el prorrateo de tus {num_pagas_extra} pagas extras ({extra_anual:,.2f} €/año), "
+            f"tu ingreso neto mensual efectivo es: **{ingreso_neto_mensual:,.2f} €**"
+        )
+
 else:
-    col_bruto, col_irpf, col_pagas = st.columns(3)
+    col_bruto, col_irpf = st.columns(2)
     with col_bruto:
         sueldo_bruto_anual = st.number_input(
             "Sueldo bruto anual (€):",
@@ -53,17 +91,24 @@ else:
             step=0.5,
             format="%.1f",
         )
-    with col_pagas:
-        num_pagas = st.selectbox(
-            "Número de pagas:", options=[12, 14], index=0
-        )
+
+    # Pregunta sobre pagas extras para sueldo bruto
+    st.markdown("---")
+    tiene_pagas_extras_bruto = st.radio(
+        "¿Cómo se distribuye tu sueldo bruto anual?",
+        options=["12 Pagas (sin extras separadas)", "14 Pagas (con 2 extras)"],
+        horizontal=True,
+        key="pagas_bruto"
+    )
+    
+    num_pagas = 14 if tiene_pagas_extras_bruto == "14 Pagas (con 2 extras)" else 12
 
     bruto_mensual = sueldo_bruto_anual / num_pagas
     neto_por_paga = bruto_mensual * (1 - (irpf_pct / 100))
     ingreso_neto_mensual = (neto_por_paga * num_pagas) / 12
 
     st.caption(
-        f"💡 Tu ingreso neto mensual estimado (promedio a 12 meses) es: **{ingreso_neto_mensual:,.2f} €**"
+        f"💡 Desglosado en {num_pagas} pagas, tu ingreso neto mensual estimado (promedio a 12 meses) es: **{ingreso_neto_mensual:,.2f} €**"
     )
 
 st.markdown("---")
@@ -158,7 +203,7 @@ if disponible_inversion <= 0:
 
 st.subheader("Configuración de Cuenta Remunerada")
 tiene_cuenta_rem = st.radio(
-    "¿Tienes cuenta remunerada?", options=["No", "Sí"], horizontal=True
+    "¿Tienes cuenta remunerada?", options=["No", "Sí"], horizontal=True, key="cta_rem"
 )
 
 tae_seleccionada = 0.0
@@ -244,15 +289,12 @@ else:
         
         años = 1 if temporalidad == "1 Año" else (3 if temporalidad == "3 Años" else 5)
         
-        # Interés compuesto simple aproximado aportando mes a mes
-        # Fórmula aproximada de capitalización con aportaciones mensuales regulares
         tae_decimal = tae_seleccionada / 100
         interes_acumulado = 0.0
         capital_total_remunerado = 0.0
         
         for mes in range(1, (años * 12) + 1):
             capital_total_remunerado += imp_remunerada
-            # Interés mensual aplicado al capital acumulado hasta el momento
             interes_mes = capital_total_remunerado * (tae_decimal / 12)
             interes_acumulado += interes_mes
             capital_total_remunerado += interes_mes
@@ -266,4 +308,3 @@ else:
             f"💡 Gracias a destinar un **{p_remunerada}%** mensual ({imp_remunerada:,.2f} €/mes) a tu cuenta remunerada en **{plataforma_elegida}** al **{tae_seleccionada}% TAE**, "
             f"conseguirás un rendimiento bruto aproximado de **{interes_acumulado:,.2f} €** en un plazo de **{temporalidad}**."
         )
-
